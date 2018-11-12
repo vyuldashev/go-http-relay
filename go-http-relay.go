@@ -20,7 +20,7 @@ func checkErr(err error) {
 }
 
 type RequestError struct {
-	error string
+	Error string `json:"error"`
 }
 
 func NewErrorResponse(err error) []byte {
