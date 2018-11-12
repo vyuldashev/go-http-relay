@@ -9,7 +9,7 @@ config.json can be placed inside the executable’s directory or /etc/go-http-re
 {
   "app_port": "7777",
   "target_url": "https://api.telegram.org",
-  "proxy_url": "111.222.333.55:8080",
+  "proxy_url": "socks5://111.222.333.55:8080",
   "proxy_username": "user1",
   "proxy_password": "pass1"
 }
