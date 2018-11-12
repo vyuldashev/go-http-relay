@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
@@ -18,30 +19,56 @@ func checkErr(err error) {
 	}
 }
 
+type RequestError struct {
+	error string
+}
+
+func NewErrorResponse(err error) []byte {
+	re := RequestError{err.Error()}
+	e, _ := json.Marshal(re)
+
+	return e
+}
+
 type App struct {
 	httpClient *http.Client
 }
 
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	// prepare request
 	req, err := http.NewRequest(
 		r.Method,
 		viper.Get("target_url").(string)+r.RequestURI,
 		io.Reader(r.Body),
 	)
-	checkErr(err)
+
+	if err != nil {
+		w.Write(NewErrorResponse(err))
+		return
+	}
 
 	req.Header.Add("Content-type", "application/json")
 	req.Header.Add("Accept", "application/json")
 
 	resp, err := a.httpClient.Do(req)
-
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
-	checkErr(err)
 
-	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		w.Write(NewErrorResponse(err))
+		return
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		w.Write(NewErrorResponse(err))
+		return
+	}
+
 	_, err = w.Write(b)
-	checkErr(err)
 }
 
 func setDefaultConfig() {
