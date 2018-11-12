@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 func checkErr(err error) {
@@ -43,29 +44,50 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	checkErr(err)
 }
 
+func setDefaultConfig() {
+	viper.SetDefault("proxy_url", "")
+	viper.SetDefault("proxy_username", "")
+	viper.SetDefault("proxy_password", "")
+}
+
 func loadConfig() {
 	viper.SetConfigName("config")
 	viper.AddConfigPath("/etc/go-http-relay/")
 	viper.AddConfigPath(".")
 
+	setDefaultConfig()
+
 	err := viper.ReadInConfig()
 	checkErr(err)
+}
+
+func proxyUrl() *url.URL {
+
+	proxyRawUrl := viper.Get("proxy_url").(string)
+
+	// add optional auth for proxy
+	if len(viper.Get("proxy_username").(string)) > 0 && len(viper.Get("proxy_password").(string)) > 0 {
+		sl := strings.Split(proxyRawUrl, "://")
+		sl[1] = fmt.Sprintf("%s:%s@%s",
+			viper.Get("proxy_username").(string),
+			viper.Get("proxy_password").(string),
+			sl[1],
+		)
+
+		proxyRawUrl = strings.Join(sl, "://")
+	}
+
+	u, err := url.Parse(proxyRawUrl)
+	checkErr(err)
+
+	return u
 }
 
 func main() {
 	loadConfig()
 
-	proxyRawUrl := fmt.Sprintf("socks5://%s:%s@%s",
-		viper.Get("proxy_username").(string),
-		viper.Get("proxy_password").(string),
-		viper.Get("proxy_url").(string),
-	)
-
-	u, err := url.Parse(proxyRawUrl)
-	checkErr(err)
-
 	tr := &http.Transport{
-		Proxy: http.ProxyURL(u),
+		Proxy: http.ProxyURL(proxyUrl()),
 		// Disable HTTP/2.
 		TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
 	}
@@ -79,6 +101,6 @@ func main() {
 	// handle any request
 	r.PathPrefix("/").Handler(&a)
 
-	err = http.ListenAndServe(":"+viper.Get("app_port").(string), r)
+	err := http.ListenAndServe(":"+viper.Get("app_port").(string), r)
 	checkErr(err)
 }
