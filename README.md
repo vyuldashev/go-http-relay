@@ -14,7 +14,7 @@ config.json can be placed inside the executable’s directory or /etc/go-http-re
   "proxy_password": "pass1"
 }
 ```
-app_port - the port http relay app be listening to.
-target_url - request endpoint
-proxy_* - proxy settings.
+- app_port - the port http relay app be listening to;
+- target_url - request endpoint;
+- proxy_* - proxy settings.
  
