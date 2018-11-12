@@ -5,17 +5,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 )
 
+var log = logrus.New()
+
 func checkErr(err error) {
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 }
 
@@ -34,6 +38,17 @@ type App struct {
 	httpClient *http.Client
 }
 
+func setupLogger() {
+	log.SetFormatter(&logrus.JSONFormatter{})
+
+	file, err := os.OpenFile("go-http-relay.log", os.O_CREATE|os.O_WRONLY, 0666)
+	if err == nil {
+		log.Out = file
+	} else {
+		log.Info("Failed to log to file, using default stderr")
+	}
+}
+
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
@@ -46,6 +61,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
+		log.Error(err)
 		w.Write(NewErrorResponse(err))
 		return
 	}
@@ -57,6 +73,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	if err != nil {
+		log.Error(err)
 		w.Write(NewErrorResponse(err))
 		return
 	}
@@ -64,6 +81,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(resp.Body)
 
 	if err != nil {
+		log.Error(err)
 		w.Write(NewErrorResponse(err))
 		return
 	}
@@ -112,6 +130,7 @@ func proxyUrl() *url.URL {
 
 func main() {
 	loadConfig()
+	setupLogger()
 
 	tr := &http.Transport{
 		Proxy: http.ProxyURL(proxyUrl()),
