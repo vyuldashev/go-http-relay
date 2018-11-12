@@ -19,7 +19,7 @@ var log = logrus.New()
 
 func checkErr(err error) {
 	if err != nil {
-		log.Panic(err)
+		panic(err)
 	}
 }
 
@@ -148,5 +148,8 @@ func main() {
 	r.PathPrefix("/").Handler(&a)
 
 	err := http.ListenAndServe(":"+viper.Get("app_port").(string), r)
-	checkErr(err)
+
+	if err != nil {
+		log.Panic(err)
+	}
 }
